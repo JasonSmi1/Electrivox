@@ -1,3 +1,6 @@
+# Meant for WoW Wrath of the Lich King,
+# But really it will evolve into any event
+
 from dotenv import load_dotenv
 import os
 import discord
