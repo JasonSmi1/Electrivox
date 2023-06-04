@@ -1,5 +1,14 @@
+import asyncio
+import uuid
+import pymongo
+from datetime import timedelta
 from ElectrivoxBot.bot import bot
 from discord.ext import commands
+
+
+# Set up the MongoDB connection
+client = pymongo.MongoClient("mongodb://localhost:27017/")  # Replace with your MongoDB connection string
+db = client["Electrivox"]  # Replace with your database name
 
 class Event(commands.Cog):
     def __init__(self, bot):
@@ -15,33 +24,37 @@ class Event(commands.Cog):
 
             @commands.command()
             async def create_event(self, ctx):
-                # Prompt the user for event details
-                await ctx.send("Please provide the event date:")
-                date_msg = await self.bot.wait_for('message', check=lambda m: m.author == ctx.author)
-                event_date = date_msg.content
+                # Gather input from the user
+                event_name = input("Enter the event name: ")
+                event_date = input("Enter the event date: ")
+                event_description = input("Enter the event description: ")
 
-                await ctx.send("Please provide the event time:")
-                time_msg = await self.bot.wait_for('message', check=lambda m: m.author == ctx.author)
-                event_time = time_msg.content
+                # Generate a unique event ID
+                event_id = str(uuid.uuid4())
 
-                await ctx.send("Please provide a description for the event:")
-                description_msg = await self.bot.wait_for('message', check=lambda m: m.author == ctx.author)
-                event_description = description_msg.content
+                # Store event details in a database
+                # Assuming you have a database connection established
+                db.insert_event(event_id, event_name, event_date, event_description)
 
-                # Create the event message with the collected details
-                event_message = f"**Event Details:**\nDate: {event_date}\nTime: {event_time}\nDescription: " \
-                                f"{event_description}"
+                # Send event notifications to users
+                users = db.fetch_subscribed_users()  # Fetch users who want event notifications
+                for user in users:
+                    user.send_message(f"New event created: {event_name} on {event_date}")
 
-                # Send the event message and add reaction buttons
-                event_msg = await ctx.send(event_message)
-                await event_msg.add_reaction(':shield:')  # Tank
-                await event_msg.add_reaction(':crossed_swords:')  # DPS
-                await event_msg.add_reaction(':deciduous_tree:') # Healer
+                # Set up event reminders
+                reminder_time = event_date - timedelta(hours=1)  # Adjust reminder time as needed
+                asyncio.create_task(self.send_reminder(event_id, reminder_time))
 
-                await ctx.send("Event created successfully!")
+                # Send a confirmation message
+                await ctx.send("Event created!")
 
-        def setup(bot):
-            bot.add_cog(Event(bot))
+            async def send_reminder(event_id, reminder_time):
+                await asyncio.sleep(reminder_time.total_seconds())
+                event = db.fetch_event(event_id)
+                if event:
+                    users = db.fetch_subscribed_users()  # Fetch users who want reminders
+                    for user in users:
+                        user.send_message(f"Reminder: Upcoming event {event.name} in 1 hour")
 
 
 def setup(bot):
