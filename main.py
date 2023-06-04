@@ -1,5 +1,5 @@
 # Meant for WoW Wrath of the Lich King,
-# But really it will evolve into any event
+# But really it will evolve into any event creator and inviter
 
 from dotenv import load_dotenv
 import os

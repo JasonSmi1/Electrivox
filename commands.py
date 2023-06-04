@@ -1,68 +1,69 @@
-import asyncio
 import discord
+import asyncio
 from discord.ext import commands
 
-intents = discord.Intents.default()
-intents.reactions = True
-intents.members = True
+class Event(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
 
-bot = commands.Bot(command_prefix='!', intents=intents)
+    @commands.command()
+    async def create_event(self, ctx):
+        # Prompt the user for event details
+        await ctx.send("Please provide the event details.")
 
-@bot.command()
-async def create_event(ctx):
-    # Prompt the user for event details
-    await ctx.send("Please provide the event details.")
-
-    def check(message):
-        return message.author == ctx.author and message.channel == ctx.channel
-
-    try:
-        # Wait for the user to provide the event details
-        event_details_msg = await bot.wait_for('message', check=check, timeout=60)
-
-        # Process the event details
-        event_details = event_details_msg.content
-
-        # Prompt the user for role selection
-        await ctx.send("Please select the roles for the event. React to this message with the desired role emojis.")
-
-        # Define the roles and corresponding emojis
-        roles = {
-            'Role 1': '🛡️',
-            'Role 2': '⚔️',
-            'Role 3': '🌳'
-        }
-
-        # Add the role emojis as reactions to the message
-        for emoji in roles.values():
-            await ctx.message.add_reaction(emoji)
-
-        # Function to check if the reaction is valid
-        def reaction_check(reaction, user):
-            return user == ctx.author and str(reaction.emoji) in roles.values()
-
-        # Wait for the user to react with a valid role emoji
-        reaction, _ = await bot.wait_for('reaction_add', check=reaction_check, timeout=1800)
-
-        # Get the selected role based on the reaction emoji
-        selected_role = next(role for role, emoji in roles.items() if emoji == str(reaction.emoji))
-
-        # Prompt the user to pick a date and time
-        await ctx.send("Please pick a date and time for the event.")
-
-        def date_check(m):
+        # Wait for the user's response
+        def check(m):
             return m.author == ctx.author and m.channel == ctx.channel
 
-        date_message = await bot.wait_for('message', check=date_check, timeout=300)
-        event_date = date_message.content
+        try:
+            # Wait for the event date
+            await ctx.send("Enter the event date:")
+            date_message = await self.bot.wait_for("message", check=check, timeout=60)
 
-        # Example: Save the event details, selected role, and event date to a database or perform other actions
+            # Wait for the event time
+            await ctx.send("Enter the event time:")
+            time_message = await self.bot.wait_for("message", check=check, timeout=60)
 
-        await ctx.send(f"Event created with details: {event_details}. Selected role: {selected_role}. Event date: "
-                       f"{event_date}")
+            # Wait for the event description
+            await ctx.send("Enter the event description:")
+            description_message = await self.bot.wait_for("message", check=check, timeout=60)
 
-    except asyncio.TimeoutError:
-        await ctx.send("Event creation timed out. Please try again.")
+            # Process the event information
+            event_date = " 📅 " + date_message.content
+            event_time = time_message.content
+            event_description = description_message.content
+
+            # Perform actions with the event information
+            # e.g., store it in a database, send notifications, etc.
+
+            # Add reaction buttons for user interaction
+            await ctx.send("Do you want to attend this event?")
+            role_message = await ctx.send(":shield: to Tank, :crossed_swords: for DPS, :deciduous_tree: for Healer.")
+
+            # Add reaction buttons to the role_message
+            await role_message.add_reaction(":shield:")
+            await role_message.add_reaction(":crossed_swords:")
+            await role_message.add_reaction(":deciduous_tree:")
+            # Wait for user's reaction
+            def reaction_check(reaction, user):
+                return user == ctx.author and str(reaction.emoji) in [":shield:", ":crossed_swords:",
+                                                                      ":deciduous_tree:"]
+
+            try:
+                reaction, user = await self.bot.wait_for("reaction_add", check=reaction_check, timeout=60)
+                if str(reaction.emoji) == ":shield:":
+                    await ctx.send("You have confirmed your role as tank.")
+                else:
+                    await ctx.send("")
+
+            except asyncio.TimeoutError:
+                await ctx.send("No reaction received. Event attendance not confirmed.")
+
+            # Reply with a confirmation message
+            await ctx.send("Event created successfully!")
+
+        except asyncio.TimeoutError:
+            await ctx.send("Event creation timed out.")
 
 def setup(bot):
-    bot.add_command(create_event)
+    bot.add_cog(Event(bot))
