@@ -1,4 +1,4 @@
-from bot import bot
+from ElectrivoxBot.bot import bot
 from discord.ext import commands
 
 class Event(commands.Cog):
